@@ -21,5 +21,8 @@
   "bugs": {
     "url": "https://github.com/Eutherio/q2s/issues"
   },
-  "homepage": "https://github.com/Eutherio/q2s"
+  "homepage": "https://github.com/Eutherio/q2s",
+  "dependencies": {
+    "query-string": "^5.0.0"
+  }
 }
