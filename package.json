@@ -4,7 +4,7 @@
   "description": "Simple tool for parsing query strings into complete SQL statements",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test"
   },
   "repository": {
     "type": "git",
