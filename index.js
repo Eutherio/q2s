@@ -17,12 +17,13 @@ module.exports = function(query, table) {
 
     let whereStmnt = '',
         orderByStmnt = '',
-        selectStmnt = '';
+        selectStmnt = '*';
 
     if ( querySetup.filters.length > 0 ) {
-      whereStmnt = ' WHERE ';            
+      whereStmnt = ' WHERE';            
       let i = 0,
           action;
+          
       for (let filter of querySetup.filters) {
   
         if ( filter.type === 'comparison') {
@@ -35,7 +36,7 @@ module.exports = function(query, table) {
           action = '`' + filter.name + '` BETWEEN ' + filter.value[0] + ' AND ' + filter.value[1];
         }
   
-        whereStmnt += (i === 0 ? '' : filter.junction) + filter.opening + action + filter.closing;
+        whereStmnt += (i === 0 ? '' : filter.junction) + ' ' + filter.opening + action + filter.closing;
   
         if ( querySetup.selection === 'filters') {
           selectStmnt += (i === 0 ? '' : ', ') + '`' + filter.name + '`';
@@ -48,6 +49,7 @@ module.exports = function(query, table) {
 
     // Set SELECT statement in case a list of columns has been specified
     if ( Array.isArray(querySetup.selection) ) {
+      selectStmnt = '';      
       let j = 0;
       for (let column of querySetup.selection) {
         selectStmnt += (j === 0 ? '' : ', ') + '`' + column + '`';
@@ -158,14 +160,14 @@ module.exports = function(query, table) {
       value: '',
       type: 'comparison',
       operator: '=',
-      junction: 'AND',
+      junction: ' AND',
       opening: '',
       closing: ''
     };
 
     // Setting filter junction ('AND' by default)
     if ( (/^OR_/i).test(value) ) {
-      filter.junction = 'OR';
+      filter.junction = ' OR';
       value = value.slice(3);
     } else if( (/^AND_/i).test(value) ) {
       value = value.slice(3);
@@ -183,6 +185,9 @@ module.exports = function(query, table) {
       value = value.slice(0, value.length - 2);
     }
     
+    // Default filter value
+    filter.value = value;
+
     // Setting filter type and operator ('comparison' and '=' by default)
 
     // Filters of type COMPARISON
