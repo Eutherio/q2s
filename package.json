@@ -1,0 +1,25 @@
+{
+  "name": "q2s",
+  "version": "0.0.1",
+  "description": "Simple tool for parsing query strings into complete SQL statements",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Eutherio/q2s.git"
+  },
+  "keywords": [
+    "query",
+    "sql",
+    "string",
+    "url"
+  ],
+  "author": "Lluís Pons <luisponshernandez@gmailcom>",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Eutherio/q2s/issues"
+  },
+  "homepage": "https://github.com/Eutherio/q2s"
+}
