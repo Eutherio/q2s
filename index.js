@@ -4,105 +4,143 @@ module.exports = function(query, table) {
 
   this.query = query;
   this.table = table;
+  this.queryString = '';
+  this.queryStack = {
+    filters: [],
+    selection: 'all',
+    order: undefined
+  };
   
   let self = this;
 
   this.translate = function() {
 
     if ( typeof self.query === 'string' ) {
+      self.queryString = self.query;
       self.query = queryString.parse(self.query);
     }
 
-    const querySetup = setup(self.query);
+    readyQuery(self.query);
 
-    let whereStmnt = '',
-        orderByStmnt = '',
-        selectStmnt = '*';
+    const SELECTION = readySelection();
 
-    if ( querySetup.filters.length > 0 ) {
-      whereStmnt = ' WHERE';            
-      let i = 0,
-          action;
-          
-      for (let filter of querySetup.filters) {
+    const TABLE = self.table;
+
+    const WHERE = self.where();
+
+    const ORDERBY = readyOrder();
   
-        if ( filter.type === 'comparison') {
-          action = '`' + filter.name + '`' + filter.operator + '\'' + filter.value + '\'';
-        }
-        else if ( filter.type === 'pattern' ) {
-          action = '`' + filter.name + '` LIKE \'' + filter.value + '\'';
-        }
-        else if ( filter.type === 'range' ) {
-          action = '`' + filter.name + '` BETWEEN ' + filter.value[0] + ' AND ' + filter.value[1];
-        }
-  
-        whereStmnt += (i === 0 ? '' : filter.junction) + ' ' + filter.opening + action + filter.closing;
-  
-        if ( querySetup.selection === 'filters') {
-          selectStmnt += (i === 0 ? '' : ', ') + '`' + filter.name + '`';
-        }
-  
-        i++;
-      }
-
-    }
-
-    // Set SELECT statement in case a list of columns has been specified
-    if ( Array.isArray(querySetup.selection) ) {
-      selectStmnt = '';      
-      let j = 0;
-      for (let column of querySetup.selection) {
-        selectStmnt += (j === 0 ? '' : ', ') + '`' + column + '`';
-        j++;
-      }
-    }
-    
-    // Set ORDER BY statement in case a list of columns has been specified
-    if ( querySetup.order ) {
-      orderByStmnt = ' ORDER BY';      
-      let k = 0;
-      for (let item of querySetup.order) {
-        orderByStmnt += (k === 0 ? '' : ', ') + '`' + item.column + '` ' + item.direction;
-        k++;
-      }
-      
-    }
-
-    return 'SELECT ' + selectStmnt + ' FROM ' + self.table + whereStmnt + orderByStmnt;
+    return 'SELECT ' + SELECTION + ' FROM ' + TABLE + WHERE + ORDERBY;
 
   };
 
-  // Creates a setup JS object with:
-  // - Lists of filters,
-  // - Columns to select
-  // - Order of the selection
-  function setup (query) {
+  // Set WHERE statement
+  this.where = function () {
 
-    let setup = {
-      filters: [],
-      selection: 'all',
-      order: undefined
-    };
+    if ( typeof self.query === 'string' ) {
+      self.queryString = self.query;      
+      self.query = queryString.parse(self.query);
+    }
+
+    if ( self.queryStack.filters.length === 0 )
+      return '';
+
+    let whereStr = ' WHERE',
+        i = 0,
+        action;
+
+    for (let filter of self.queryStack.filters) {
+
+      if ( filter.type === 'comparison') {
+        action = '`' + filter.name + '`' + filter.operator + '\'' + filter.value + '\'';
+      }
+      else if ( filter.type === 'pattern' ) {
+        action = '`' + filter.name + '` LIKE \'' + filter.value + '\'';
+      }
+      else if ( filter.type === 'range' ) {
+        action = '`' + filter.name + '` BETWEEN ' + filter.value[0] + ' AND ' + filter.value[1];
+      }
+
+      whereStr += (i === 0 ? '' : filter.junction) + ' ' + filter.opening + action + filter.closing;
+
+      i++;
+    }
+
+    self.whereStmnt = whereStr;
+    return whereStr;
+
+  };
+
+  // Set SELECT statement
+  function readySelection () {
+
+    // Will select all fields
+    if ( self.queryStack.selection === 'all' )
+      return '*';
     
-    if ( Object.keys(query).length > 0 ) {
-      for (let key in query) {
-  
-        if ( key === 'selection') {
-          setup.selection = parseSelection(query[key]);
-          continue;
-        }
-  
-        if ( key === 'orderby' ) {
-          setup.order = parseOrder(query[key]);
-          continue;
-        }
-  
-        setup.filters.push(parseFilter(key, query[key]));
-  
+    let selectStmnt = '',
+        i = 0;
+
+    // Will select the fields used as filters
+    if ( self.queryStack.selection === 'filters') {
+      for (let filter of self.queryStack.filters) {
+        selectStmnt += (i === 0 ? '' : ', ') + '`' + filter.name + '`';
+        i++;
       }
     }
 
-    return setup;
+    // Will select the list of fields specified
+    if ( Array.isArray(self.queryStack.selection) ) {
+      for (let column of self.queryStack.selection) {
+        selectStmnt += (i === 0 ? '' : ', ') + '`' + column + '`';
+        i++;
+      }
+    }
+    
+    return selectStmnt;
+  }
+
+  // Set ORDER BY statement in case a list of columns has been specified
+  function readyOrder () {
+
+    if ( !self.queryStack.order )
+      return '';
+    
+    let orderByStmnt = ' ORDER BY ',
+        i = 0;
+
+    for (let item of self.queryStack.order) {
+      orderByStmnt += (i === 0 ? '' : ', ') + '`' + item.column + '` ' + item.direction;
+      i++;
+    }
+    
+    return orderByStmnt;
+  }
+
+  // Populatos queryStack object with:
+  // - Lists of filters,
+  // - Columns to select
+  // - Order of the selection
+  function readyQuery () {
+    
+    if ( Object.keys(self.query).length === 0 )
+      return;
+
+    for (let key in self.query) {
+
+      if ( key === 'select' || key === '*select' ) {
+        self.queryStack.selection = parseSelection(self.query[key]);
+        continue;
+      }
+
+      if ( key === 'orderby' || key === '*orderby' ) {
+        self.queryStack.order = parseOrder(self.query[key]);
+        continue;
+      }
+
+      self.queryStack.filters.push(parseFilter(key, self.query[key]));
+
+    }
 
   }
 
@@ -115,7 +153,6 @@ module.exports = function(query, table) {
         return val.trim();
       });
     }
-
     return selection;
 
   }
@@ -124,29 +161,31 @@ module.exports = function(query, table) {
   // list of fields from which order will be stablished
   function parseOrder (order) {
 
-    order = order.split(',').map((val) => {
+    order = order.split(',');
+    if ( order.length === 1 && order[0] === '' )
+      return undefined;
+
+    return order.map((val) => {
       val = val.trim();
       if ( (/\sasc$/i).test(val) ) {
         return {
           column: val.slice(0, val.length - 4),
           direction: 'ASC'
-        }
+        };
       }
       else if ( (/\sdesc$/i).test(val) ) {
         return {
           column: val.slice(0, val.length - 5),
           direction: 'DESC'
-        }
+        };
       }
-
+      
       return {
         column: val,
         direction: 'ASC'
-      }
-
+      };
+      
     });
-
-    return order;
 
   }
 
