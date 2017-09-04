@@ -1,6 +1,6 @@
 {
   "name": "q2s",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Simple tool for parsing query strings into complete SQL statements",
   "main": "index.js",
   "scripts": {
