@@ -13,6 +13,8 @@ module.exports = function() {
   // QUERY PARSING
   this.parse = function(query) {
     
+    query = query || '';
+
     if ( typeof query === 'string' ) {
       self.inputString = query;
       self.input = queryString.parse(query);
@@ -156,6 +158,7 @@ module.exports = function() {
         continue;
       }
 
+      if ( isself.input[key])
       self.filters.push(parseFilter(key, self.input[key]));
 
     }
@@ -228,8 +231,13 @@ module.exports = function() {
     if ( (/^OR_/i).test(value) ) {
       filter.junction = ' OR';
       value = value.slice(3);
-    } else if( (/^AND_/i).test(value) ) {
-      value = value.slice(3);
+    } 
+    else if( (/^NOT_/i).test(value) ) {
+      filter.junction = ' NOT';
+      value = value.slice(4);
+    }
+    else if( (/^AND_/i).test(value) ) {
+      value = value.slice(4);
     }
 
     // Setting filter opening (without any by default)
@@ -250,12 +258,16 @@ module.exports = function() {
     // Setting filter type and operator ('comparison' and '=' by default)
 
     // Filters of type COMPARISON
-    if( (/^(=_|>_|<_)/i).test(value) ) {
-      filter.operator = value.slice(0,1);
+    if( (/^(!_)/i).test(value) ) {
+      filter.operator = '<>';
       filter.value = value.slice(2);
     }
-    else if( (/^(!=_|>=_|<=_)/i).test(value) ) {
-      filter.operator = value.slice(0,2);
+    else if( (/^(>_|<_)/i).test(value) ) {
+      filter.operator = value.slice(0,1) + '=';
+      filter.value = value.slice(2);
+    }
+    else if( (/^(>>_|<<_)/i).test(value) ) {
+      filter.operator = value.slice(0,1);
       filter.value = value.slice(3);
     }
 

@@ -1,3 +1,4 @@
 .DS_Store
 *.vscode-upload.json
 node_modules
+playground.js

@@ -6,14 +6,14 @@ Simple tool for parsing query strings into complete SQL statements
 Us this to translate either raw or parsed URL query strings into SQL commands. With q2s you will be able to build complex filters with just one step.
 
 
-## Installation
+# Installation
 
 ```
 $ npm install q2s
 ```
 
 
-## Quick example
+# Quick example
 
 With raw query strings:
 ```js
@@ -48,7 +48,7 @@ console.log(sql);
 ```
 
 
-## Documentation
+# Documentation
 
 * [Api](#api)
 * [Advanced use](#advanced-use)
@@ -56,7 +56,7 @@ console.log(sql);
 
 
 
-## API
+# API
 
 ### .parse(**query**)
 
@@ -66,7 +66,9 @@ Adds/resets the query and parses it
 
 * **query**
 
-  (*string*|*object*)(Required)
+  (*string*|*object*)(Optional)
+
+  Default value: ''
 
 #### Return
 
@@ -76,6 +78,7 @@ Adds/resets the query and parses it
 ### .sql(**table**)
 
 Returns a SQL query or token. If **table** is ommited, returns just the SQL *WHERE* clause.
+
 *\*Warning: if table is ommited and no filter is included, it will throw an error*
 
 #### Parameters
@@ -83,6 +86,7 @@ Returns a SQL query or token. If **table** is ommited, returns just the SQL *WHE
 * **table**
 
   (*string*)(Optional)
+
   Default value: ''
 
 #### Return
@@ -92,12 +96,15 @@ Returns a SQL query or token. If **table** is ommited, returns just the SQL *WHE
 
 
 
-## Advanced use
+# Advanced use
 
 *q2s* allows you to build complex SQL queries with almost all the rules included in the language
 
 
-### WHERE clause
+## WHERE clause
+
+
+### Condition operators
 
 A part from the usual search using the '*equal*' (`=`) operator, SQL includes other operators. Here's a list of them and how to build your query string to use them:
 * `=` (*equal*): `'?column=value'`
@@ -162,9 +169,37 @@ console.log(sql);
 ```
 
 
-### ORDER BY clause
+### Combination operators
 
-To sort de result-set you should include a parameter 'order' in your query string. In case there's a column in your table with the name 'order', use a precceding asterisk ('*\*order*').
+By default, *q2s* will combine all the conditions in the WHERE clause with the 'AND' operator. To change that behavior, use the *modifier* `or_` or `not_` in the query string.
+
+#### Examples
+
+```js
+sql = query2sql.parse('?name=John&lastname=or_Doe&age=not_>>_35').sql('customers');
+console.log(sql);
+//=> "SELECT * FROM customers WHERE `name`='John' OR `lastname`='Doe' NOT `age`>35";
+```
+
+
+### Condition grouping
+
+To group de conditions inside the WHERE clause, use the `(_` or `_)` modifiers in the query string. 
+
+#### Examples
+
+```js
+sql = query2sql.parse('?name=John&(_lastname=Doe&lastname=or_Smith_)').sql('customers');
+console.log(sql);
+//=> "SELECT * FROM customers WHERE `name`='John' AND ( `lastname`='Doe' OR `lastname`='Smith' )";
+```
+
+
+## ORDER BY clause
+
+To sort de result-set you should include a parameter 'order' in your query string. 
+
+* *Tip: In case there's a column in your table with the name 'order', use a precceding asterisk ('*\*order*').*
 
 #### Examples
 
@@ -182,9 +217,11 @@ console.log(sql);
 ```
 
 
-### SELECT clause
+## SELECT clause
 
-By default, *q2s* will select all columns (`*`) in the table. However, you can change this behavior including a parameter 'select' in your query string. In case there's a column in your table with the name 'select', use a precceding asterisk ('*\*select*').
+By default, *q2s* will select all columns (`*`) in the table. However, you can change this behavior including a parameter 'select' in your query string.
+
+* *Tip: In case there's a column in your table with the name 'select', use a precceding asterisk ('*\*select*').*
 
 #### Examples
 
@@ -201,3 +238,4 @@ sql = query2sql.parse('?name=John&age=>>25&*select=name,lastname,age,email,addre
 console.log(sql);
 //=> "SELECT `name`, `lastname`, `age`, `email`, `address` FROM customers WHERE `name`='John' AND `age`>25"
 ```
+
