@@ -1,55 +1,101 @@
 const queryString = require('query-string');
 
-module.exports = function(query, table) {
+module.exports = function() {
 
-  this.query = query;
-  this.table = table;
-  this.queryString = '';
-  this.queryStack = {
-    filters: [],
-    selection: 'all',
-    order: undefined
-  };
+  this.input = {};
+  this.inputString = '';
+  this.filters = [];
+  this.selection = 'all';
+  this.order = undefined;
   
   let self = this;
+  
+  // QUERY PARSING
+  this.parse = function(query) {
+    
+    if ( typeof query === 'string' ) {
+      self.inputString = query;
+      self.input = queryString.parse(query);
+    }
+    else {
+      self.inputString = queryString.stringify(query);
+      self.input = query;
+    }
+    
+    self.filters = [];
+    self.selection = 'all';
+    self.order = undefined;
 
-  this.translate = function() {
-
-    if ( typeof self.query === 'string' ) {
-      self.queryString = self.query;
-      self.query = queryString.parse(self.query);
+    parseQuery();
+ 
+    if (self.selection === 'filters' && self.filters.length === 0) {
+      throw new Error("Error: Expected filters -> at least one filter must be specified.");
     }
 
-    readyQuery(self.query);
-
-    const SELECTION = readySelection();
-
-    const TABLE = self.table;
-
-    const WHERE = self.where();
-
-    const ORDERBY = readyOrder();
+    return self;
+    
+  };
   
-    return 'SELECT ' + SELECTION + ' FROM ' + TABLE + WHERE + ORDERBY;
+  // TRANSLATION OF PARSED QUERY TO SQL
+  this.sql = function(table) {
+    
+    const WHERE = setWhere();
 
+    if (!table && table !== '') {
+      if ( WHERE === '' ) {
+        throw new Error("Error: Expected 'tableName' argument -> specify a table to work with.");
+      }
+      return WHERE.trim();
+    }
+    
+    const FIELDS = setSelect();
+    
+    const ORDERBY = setOrder();
+    
+    return 'SELECT ' + FIELDS + ' FROM ' + table + WHERE + ORDERBY;
+    
   };
 
-  // Set WHERE statement
-  this.where = function () {
+  // Set SELECT statement
+  function setSelect () {
+    
+    // Will select all fields
+    if ( self.selection === 'all' )
+      return '*';
+    
+    let selectStmnt = '',
+        i = 0;
 
-    if ( typeof self.query === 'string' ) {
-      self.queryString = self.query;      
-      self.query = queryString.parse(self.query);
+    // Will select the fields used as filters
+    if ( self.selection === 'filters') {
+      for (let filter of self.filters) {
+        selectStmnt += (i === 0 ? '' : ', ') + '`' + filter.name + '`';
+        i++;
+      }
     }
 
-    if ( self.queryStack.filters.length === 0 )
+    // Will select the list of fields specified
+    if ( Array.isArray(self.selection) ) {
+      for (let column of self.selection) {
+        selectStmnt += (i === 0 ? '' : ', ') + '`' + column + '`';
+        i++;
+      }
+    }
+    
+    return selectStmnt;
+  }
+
+  // Set WHERE statement
+  function setWhere () {
+
+    if ( self.filters.length === 0 )
       return '';
 
     let whereStr = ' WHERE',
         i = 0,
         action;
 
-    for (let filter of self.queryStack.filters) {
+    for (let filter of self.filters) {
 
       if ( filter.type === 'comparison') {
         action = '`' + filter.name + '`' + filter.operator + '\'' + filter.value + '\'';
@@ -70,46 +116,16 @@ module.exports = function(query, table) {
     return whereStr;
 
   };
-
-  // Set SELECT statement
-  function readySelection () {
-
-    // Will select all fields
-    if ( self.queryStack.selection === 'all' )
-      return '*';
-    
-    let selectStmnt = '',
-        i = 0;
-
-    // Will select the fields used as filters
-    if ( self.queryStack.selection === 'filters') {
-      for (let filter of self.queryStack.filters) {
-        selectStmnt += (i === 0 ? '' : ', ') + '`' + filter.name + '`';
-        i++;
-      }
-    }
-
-    // Will select the list of fields specified
-    if ( Array.isArray(self.queryStack.selection) ) {
-      for (let column of self.queryStack.selection) {
-        selectStmnt += (i === 0 ? '' : ', ') + '`' + column + '`';
-        i++;
-      }
-    }
-    
-    return selectStmnt;
-  }
-
   // Set ORDER BY statement in case a list of columns has been specified
-  function readyOrder () {
+  function setOrder () {
 
-    if ( !self.queryStack.order )
+    if ( !self.order )
       return '';
     
     let orderByStmnt = ' ORDER BY ',
         i = 0;
 
-    for (let item of self.queryStack.order) {
+    for (let item of self.order) {
       orderByStmnt += (i === 0 ? '' : ', ') + '`' + item.column + '` ' + item.direction;
       i++;
     }
@@ -117,30 +133,34 @@ module.exports = function(query, table) {
     return orderByStmnt;
   }
 
-  // Populatos queryStack object with:
+  // Creates properties:
   // - Lists of filters,
   // - Columns to select
   // - Order of the selection
-  function readyQuery () {
+  function parseQuery () {
     
-    if ( Object.keys(self.query).length === 0 )
+    if ( Object.keys(self.input).length === 0 )
       return;
+    
+    let key;
 
-    for (let key in self.query) {
+    for (key in self.input) {
 
       if ( key === 'select' || key === '*select' ) {
-        self.queryStack.selection = parseSelection(self.query[key]);
+        self.selection = parseSelection(self.input[key]);
         continue;
       }
 
       if ( key === 'orderby' || key === '*orderby' ) {
-        self.queryStack.order = parseOrder(self.query[key]);
+        self.order = parseOrder(self.input[key]);
         continue;
       }
 
-      self.queryStack.filters.push(parseFilter(key, self.query[key]));
+      self.filters.push(parseFilter(key, self.input[key]));
 
     }
+
+    self.filters.reverse();
 
   }
 
