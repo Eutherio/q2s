@@ -50,8 +50,11 @@ console.log(sql);
 
 # Documentation
 
-* [Api](#api)
+* [API](#api)
 * [Advanced use](#advanced-use)
+  * [WHERE clause](#where-clause)
+  * [ORDER BY clause](#order-by-clause)
+  * [SELECT clause](#select-clause)
 
 
 
