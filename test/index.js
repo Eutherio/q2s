@@ -249,7 +249,7 @@ describe("q2s", function () {
       
     });
     
-    describe("with 'customers' as 'tableName' [ .sql('customers) ]", function() {
+    describe("with 'customers' as 'tableName' [ .sql('customers') ]", function() {
       
       it("should return a complete SQL statement:\n\r\t( SELECT `name`, `lastname`, `birthDate` FROM customers ORDER BY `name` ASC, `birthDate` DESC )", function () {
         should.equal(query2sql.parse("?select=name, lastname, birthDate&orderby=name, birthDate desc")

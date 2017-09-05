@@ -158,7 +158,7 @@ module.exports = function() {
         continue;
       }
 
-      if ( isself.input[key])
+      if ( self.input[key])
       self.filters.push(parseFilter(key, self.input[key]));
 
     }
